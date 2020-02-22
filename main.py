@@ -11,7 +11,7 @@ from tkinter import Tk, Label, Frame
 # from cairo import ImageSurface, Context, FORMAT_ARGB32, LinearGradient
 from render import SimpleRenderer
 
-RENDER_INTERVAL = 10  # ms
+RENDER_INTERVAL = 50  # ms
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ class MainGuiApp(Tk):
         super().__init__(*args, **kwargs)
 
         self.w, self.h = style.WIDTH, style.HEIGHT
-        self.model = grid_world.GridWorld(0, 0)
+        self.model = grid_world.GridWorld()
 
         self.geometry("{}x{}".format(self.w, self.h))
         self.world = Frame(self, bg=style.WORLD_BG, height=style.WORLD_HEIGHT)
@@ -70,24 +70,23 @@ class MainGuiApp(Tk):
         logger.debug("Key pressed: {}".format(event.char))
 
         # speed = 1 * (self.time_delta_ms / 100)
-        speed = 1
-        x_direction = 0
-        y_direction = 0
 
         if event.char == "a":
-            x_direction -= speed
+            action = grid_world.LeftAction()
         elif event.char == "d":
-            x_direction += speed
+            action = grid_world.RightAction()
         elif event.char == "w":
-            y_direction -= speed
+            action = grid_world.UpAction()
         elif event.char == "s":
-            y_direction += speed
+            action = grid_world.DownAction()
+        else:
+            action = grid_world.NoAction()
 
-        direction = grid_world.Direction(x_direction, y_direction)
-        self.model.change_direction(direction)
+        self.model.do_action(action)
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
     app = MainGuiApp()
     app.run()
+
