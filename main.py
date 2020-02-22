@@ -3,15 +3,15 @@ import tkinter as tk
 import time
 import logging
 
-import model
+import grid_world
+import style as style
 
-from tkinter import Tk, Label
-from PIL import Image, ImageTk
-from cairo import ImageSurface, Context, FORMAT_ARGB32, LinearGradient
+from tkinter import Tk, Label, Frame
+# from PIL import Image, ImageTk
+# from cairo import ImageSurface, Context, FORMAT_ARGB32, LinearGradient
+from render import SimpleRenderer
 
-RENDER_INTERVAL = 100  # ms
-WIDTH = 800  # px
-HEIGHT = 600  # px
+RENDER_INTERVAL = 10  # ms
 
 logger = logging.getLogger(__name__)
 
@@ -21,55 +21,35 @@ class MainGuiApp(Tk):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.w, self.h = WIDTH, HEIGHT
-        self.model = model.Model(self.w / 2, self.h / 2)
+        self.w, self.h = style.WIDTH, style.HEIGHT
+        self.model = grid_world.GridWorld(0, 0)
 
         self.geometry("{}x{}".format(self.w, self.h))
+        self.world = Frame(self, bg=style.WORLD_BG, height=style.WORLD_HEIGHT)
+        self.options = Frame(self,
+                             bg=style.OPTIONS_BG,
+                             height=style.OPTIONS_HEIGHT)
 
-        self.surface = ImageSurface(FORMAT_ARGB32, self.w, self.h)
-        self.ctx = Context(self.surface)
+        self.world.pack(expand=True, fill="both")
+        self.options.pack(fill="both")
 
-        self._image_ref = None
-
-        self.label = Label(self, image=self._image_ref)
-        self.label.pack(expand=True, fill="both")
-
+        self.renderer = SimpleRenderer(self.model, self.world)
         self.time_delta_ms = 0
 
     def run(self):
         # bind key handler
         self.bind("<Key>", self.handle_key_press)
         # start render loop
-        self.clock()
+        self.tick()
         # start main tkinter loop for handling events
         self.mainloop()
 
-    def render(self):
-        # reset canvas to white
-        self.ctx.set_source_rgb(1, 1, 1)
-        self.ctx.paint()
-
-        self.ctx.set_source_rgb(1, 0, 0)
-
-        x = self.model.position.x
-        y = self.model.position.y
-
-        self.ctx.rectangle(x, y, 10, 10)
-        self.ctx.fill()
-
-        self._image_ref = ImageTk.PhotoImage(
-            Image.frombuffer("RGBA", (self.w, self.h),
-                             self.surface.get_data().tobytes(), "raw", "BGRA",
-                             0, 1))
-
-        self.label.configure(image=self._image_ref)
-
-    def clock(self):
+    def tick(self):
         start_ns = time.time_ns()
 
         self.model.update()
 
-        self.render()
+        self.renderer.render()
 
         end_ns = time.time_ns()
 
@@ -84,12 +64,13 @@ class MainGuiApp(Tk):
             logger.warning("Dropped frame!")
             logger.debug("Wait duration: {} ms".format(wait_duration_ms))
 
-        self.after(wait_duration_ms, self.clock)
+        self.after(wait_duration_ms, self.tick)
 
     def handle_key_press(self, event):
         logger.debug("Key pressed: {}".format(event.char))
 
-        speed = 1 * (self.time_delta_ms / 100)
+        # speed = 1 * (self.time_delta_ms / 100)
+        speed = 1
         x_direction = 0
         y_direction = 0
 
@@ -102,7 +83,7 @@ class MainGuiApp(Tk):
         elif event.char == "s":
             y_direction += speed
 
-        direction = model.Direction(x_direction, y_direction)
+        direction = grid_world.Direction(x_direction, y_direction)
         self.model.change_direction(direction)
 
 
@@ -110,32 +91,3 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
     app = MainGuiApp()
     app.run()
-
-
-# def clock():
-#     time = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')
-#     TIME_LABEL.configure(text=time)
-#     ROOT.after(RENDER_INTERVAL, clock)
-#
-#
-# def draw_rectangle(x, y):
-#     CANVAS.create_rectangle(x, y, x + 10, y + 10, fill="red")
-#
-#
-# def move(event):
-#     global X, Y
-#     print(event.char)
-#     if event.char == "a":
-#         X -= 10
-#     elif event.char == "d":
-#         X += 10
-#     elif event.char == "w":
-#         Y -= 10
-#     elif event.char == "s":
-#         Y += 10
-#     draw_rectangle(X, Y)
-#
-#
-# clock()
-# ROOT.bind("<Key>", move)
-# ROOT.mainloop()
